@@ -79,4 +79,16 @@ async def get_user(
     db.query(User).filter(User.id == user_id).delete()
     return  {'msg': "deleted!"}
 
-
+@router.patch('/{user_id}/status')
+async def get_user(
+    user_id: int, 
+    current_user: Annotated[UserResponseModel, Depends(get_only_admin)],
+    db: Annotated[Session, Depends(get_db)],
+    status: str
+)->dict:
+    
+    if current_user.type_user == 'admin':
+        db.query(User).filter(User.id == user_id and User.type_user == 'client').update({'status_account': status})
+    else:
+        db.query(User).filter(User.id == user_id and User.type_user != 'super_admin').update({'status_account': status})
+    return  {'msg': "update status user!"}
