@@ -37,6 +37,12 @@ class CommonQueryParams:
         self.search = search
         self.sort = sort
         
+class PaginationParams:
+    def __init__(self, page: int = 1, page_size: int = 10):
+        self.page = page
+        self.page_size = page_size
+        self.offset = (page - 1) * page_size
+        
 def db_create(db: Session, data: any):
     try:
         db.add(data)  
