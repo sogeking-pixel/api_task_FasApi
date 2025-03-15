@@ -51,18 +51,32 @@ async def read_users(
     return query.all()
 
 
-@router.get('/{user_id}', status_code=201, response_model=list[UserResponseModel])
-async def get_user( current_user: Annotated[UserResponseModel, Depends(get_current_active_user)], user_id: int)->UserResponseModel:
-    if not validate_len(user_id, users):
-        raise HTTPException(status_code=404)
-    if current_user.type_user == "client" and current_user.username != users[user_id].username :
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    return users[id]
+@router.get('/me')
+async def get_user( 
+    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)]
+)->UserResponseModel:    
+    return current_user
+
+
+@router.get('/{user_id}', status_code=201, response_model=UserResponseModel)
+async def get_user( 
+    current_user: Annotated[UserResponseModel, Depends(get_only_admin)], 
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)]
+)->UserResponseModel:
+     
+    user = db.query(User).filter(User.id == user_id).first()
     
+    return user
+        
     
 @router.delete('/{user_id}')
-async def get_user(user_id: int, current_user: Annotated[UserResponseModel, Depends(get_only_super_admin)])->dict:
-    if not validate_len(user_id, users):
-        raise HTTPException(status_code=404)
-    users.pop(user_id)
+async def get_user(
+    user_id: int, 
+    current_user: Annotated[UserResponseModel, Depends(get_only_super_admin)],
+    db: Annotated[Session, Depends(get_db)]
+)->dict:
+    db.query(User).filter(User.id == user_id).delete()
     return  {'msg': "deleted!"}
+
+
