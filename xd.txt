@@ -1,0 +1,3 @@
+hacer archivo de seguridad solo hashear password and tokken
+investigar sobre permiso
+crear nuevamos rutas para realizar nested routes
