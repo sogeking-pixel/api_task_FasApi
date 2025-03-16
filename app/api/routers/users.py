@@ -18,13 +18,13 @@ paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]
 @router.get('/', response_model=list[UserResponse])
 async def read_users(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponseModel, Depends(get_only_admin)], 
+    current_user: Annotated[UserResponse, Depends(get_only_admin)], 
     common: commonparams, 
     pagination: paginationparams,
     type_user: TypeUserModel | None = None, 
     status_user: StatusUserModel | None = None,
    
-) -> List[UserResponseModel]:
+) -> List[UserResponse]:
     
     query = db.query(User)
     
