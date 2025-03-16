@@ -5,8 +5,7 @@ from app.utils.util import validate_len, verify_key, verify_token, CommonQueryPa
 from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user
 
 from sqlalchemy.orm import Session
-from app.core.config import settings
-from app.models.model import User, Token
+from app.models.model import User
 from app.core.database import get_db
 
 router = APIRouter()
@@ -78,6 +77,7 @@ async def get_user(
 )->dict:
     db.query(User).filter(User.id == user_id).delete()
     return  {'msg': "deleted!"}
+
 
 @router.patch('/{user_id}/status')
 async def get_user(

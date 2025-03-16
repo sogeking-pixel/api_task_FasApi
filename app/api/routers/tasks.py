@@ -3,119 +3,196 @@ from typing import List
 from app.schemas.task import TaskModel, PriorityModel
 from app.schemas.user import UserResponseModel
 from typing import Annotated
-from app.utils.util import CommonQueryParams, verify_token, verify_key, validate_len
+from app.utils.util import CommonQueryParams, verify_token, verify_key, validate_len, db_create, PaginationParams
 from app.utils.token import get_current_active_user, get_only_admin
-from app.models.list import tasks
+from sqlalchemy.orm import Session
+from app.models.model import Task
+from app.core.database import get_db
 
 
 router = APIRouter()
 
 
 dependencies_token = [Depends(verify_token), Depends(verify_key)]
-    
+paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]  
 commonsDep = Annotated[CommonQueryParams, Depends(CommonQueryParams)]
 
-def not_authorized_client(user: UserResponseModel, task_id: int)->bool:
-    return user.type_user == "client" and user.username != tasks[task_id].user_username
 
+# completed!
 @router.get('/', status_code=status.HTTP_200_OK)
 async def read_task(
+    db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
     commons: commonsDep,
+    pagination: paginationparams,
     priority: PriorityModel|None = None,
-   
     )-> List[TaskModel]:
     
+    
+    query = db.query(Task)
+    
     if current_user.type_user == "client":
-        list_taks = [task for task in tasks if task.user_username == current_user.username]
-    else:
-        list_taks = tasks.copy()
+        query = query.filter(Task.user_id == current_user.id)
     
     if priority:
-        list_taks = list(filter(lambda i: i.priority == priority, list_taks))
+        query = query.filter(Task.priority == priority)
     
     if commons.search:
-        list_taks = list(filter(lambda i: commons.search in i.title or (i.description and commons.search in i.description), list_taks))
+        query = query.filter(Task.title.ilike(f'%{commons.search}%'))
     
     if commons.sort:
-        list_taks.sort(key=lambda x: x.title, reverse=(commons.sort=='desc'))
+        query = query.order_by(
+            Task.title.desc() if commons.sort == 'desc' 
+            else Task.title.asc()
+        )
+    
+    query = query.offset(pagination.offset).limit(pagination.page_size)
+    
+    return query.all()
 
-    return list_taks
 
+@router.post('/', status_code=status.HTTP_201_CREATED)
+async def create_task(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    task: TaskModel
+) -> dict:
+    
+    task.user_id = current_user.id
+    
+    db_task = db_create(db, Task(task))
+    
+    if not db_task:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create task"
+        )
 
-@router.post('/',status_code=status.HTTP_201_CREATED)
-async def create_task( current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],task : TaskModel)->dict:
-    task.user_username = current_user.username
-    tasks.append(task)
-    return {'msg': 'create!'}
-
+    return {
+        'status': 'success',
+        'message': 'Task created successfully',
+        'data': db_task
+    }
+        
+    
 
 @router.get('/{task_id}')
 async def get_task(
-    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[UserResponseModel, Depends(get_only_admin)],
     task_id: int,
     )->TaskModel:
-    
-    if validate_len(task_id, tasks):
-        raise HTTPException(status_code=404)
-    if not_authorized_client(current_user, task_id) :
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    return tasks[task_id]
+    if current_user.type_user == "client":
+        taks = db.query(Task).filter(Task.id == task_id, current_user.id == Task.user_id).first()
+    else:
+        taks = db.query(Task).filter(Task.id == task_id ).first()
+    return taks
 
 
 @router.delete('/{task_id}')
-async def delete_task( current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],task_id:  Annotated[int, Path(title="The ID of the item to get", ge=0, le=200)])->dict:
-    if validate_len(task_id, tasks):
-        raise HTTPException(status_code=404)
-    if not_authorized_client(current_user, task_id) :
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    tasks.pop(task_id)
+async def delete_task( 
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[UserResponseModel, 
+    Depends(get_current_active_user)],
+    task_id: int
+)->dict:
+    db.query(Task).filter(Task.id == task_id, current_user.id == Task.user_id).delete()
     return {'msg': "deleted!"}
 
 
 @router.put('/{task_id}')
-async def update( current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],task_id: int, task_new: TaskModel)->dict:
-    if validate_len(task_id):
-        raise HTTPException(status_code=404)
-    if not_authorized_client(current_user, task_id) :
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    tasks[task_id] = task_new
-    return {'msg':'updated!', 'task': tasks[task_id]}   
+async def update(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    task_id: int,
+    task: TaskModel
+) -> dict:
+    
+    existing_task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.user_id == current_user.id
+    ).first()
+
+    if not existing_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found or unauthorized"
+        )
+    
+    update_data = task.model_dump(exclude_unset=True)
+    
+    db.query(Task).filter(Task.id == task_id).update(update_data)
+    db.commit()
+    db.refresh(existing_task)
+
+    return {'msg': 'updated!', 'task': existing_task}
 
 
 @router.patch('/{task_id}')
 async def update_parts(
+    db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
     task_id: int, 
     priority: PriorityModel|None = None, 
-    title: str| None = Query(default=None, max_length=50), 
+    title: str|None = Query(default=None, max_length=50), 
     description: str|None = None
-    )->dict:
+)->dict:
     
-    if validate_len(task_id, tasks):
-        raise HTTPException(status_code=404)
-    if not_authorized_client(current_user, task_id) :
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.user_id == current_user.id
+    ).first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found or unauthorized"
+        )
     
-    task = tasks[task_id]
+    update_data = {}
+    if priority is not None:
+        update_data['priority'] = priority
+    if title is not None:
+        update_data['title'] = title 
+    if description is not None:
+        update_data['description'] = description
+
+    if not update_data:
+        return {'msg': 'updated!', 'task': task}
+        
+        
+    result = db.query(Task).filter(
+        Task.id == task_id,
+        Task.user_id == current_user.id
+    ).update(update_data)
     
-    if priority:
-        task.priority = priority
-    if title:
-        task.title = title
-    if description:
-        task.description = description
+    if result == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found or unauthorized"
+        )
+    db.commit()
+    task = db.query(Task).filter(Task.id == task_id).first()    
+    return {'msg': 'updated!', 'task': task}
     
-    return {'msg':'updated!', 'task': tasks[task_id]}    
+   
 
 
 @router.post('/{task_id}/complete')
-async def complete_task( current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],task_id: int)->dict:
-    
-    if validate_len(task_id, tasks):
-        raise HTTPException(status_code=404)
-    if not_authorized_client(current_user, task_id) :
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    task = tasks[task_id]
-    task.completed = True
+async def complete_task(
+    db: Annotated[Session, Depends(get_db)], 
+    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    task_id: int
+)->dict:
+    result = db.query(Task).filter(
+    Task.id == task_id,
+    Task.user_id == current_user.id
+    ).update({'completed': True})
+
+    if result == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found or unauthorized"
+        )
+    db.commit()
     return {'msg':"completed!"}
