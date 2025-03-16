@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from typing import List, Annotated
-from app.schemas.user import TypeUserModel, StatusUserModel, UserCreateModel, UserResponseModel
+from app.schemas.user import TypeUserModel, StatusUserModel, UserCreate, UserResponse
 from app.utils.util import verify_key, CommonQueryParams, PaginationParams
 from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user
 
@@ -10,11 +10,12 @@ from app.core.database import get_db
 
 router = APIRouter()
 
-dependencies_token = [Depends(verify_token), Depends(verify_key)]
+# dependencies_token = [Depends(verify_token), Depends(verify_key)]
+
 commonparams  =  Annotated[CommonQueryParams, Depends(CommonQueryParams)]
 paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]
 
-@router.get('/', response_model=list[UserResponseModel])
+@router.get('/', response_model=list[UserResponse])
 async def read_users(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponseModel, Depends(get_only_admin)], 
@@ -57,12 +58,12 @@ async def get_user(
     return current_user
 
 
-@router.get('/{user_id}', status_code=201, response_model=UserResponseModel)
+@router.get('/{user_id}', status_code=201, response_model=UserResponse)
 async def get_user( 
-    current_user: Annotated[UserResponseModel, Depends(get_only_admin)], 
+    current_user: Annotated[UserResponse, Depends(get_only_admin)], 
     user_id: int,
     db: Annotated[Session, Depends(get_db)]
-)->UserResponseModel:
+)->UserResponse:
      
     user = db.query(User).filter(User.id == user_id).first()
     
@@ -72,7 +73,7 @@ async def get_user(
 @router.delete('/{user_id}')
 async def get_user(
     user_id: int, 
-    current_user: Annotated[UserResponseModel, Depends(get_only_super_admin)],
+    current_user: Annotated[UserResponse, Depends(get_only_super_admin)],
     db: Annotated[Session, Depends(get_db)]
 )->dict:
     db.query(User).filter(User.id == user_id).delete()
@@ -82,7 +83,7 @@ async def get_user(
 @router.patch('/{user_id}/status')
 async def get_user(
     user_id: int, 
-    current_user: Annotated[UserResponseModel, Depends(get_only_admin)],
+    current_user: Annotated[UserResponse, Depends(get_only_admin)],
     db: Annotated[Session, Depends(get_db)],
     status: str
 )->dict:
