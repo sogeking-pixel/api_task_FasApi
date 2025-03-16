@@ -1,7 +1,7 @@
 
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends,  HTTPException, status
-from app.schemas.user import UserResponse, UserCreate, UserResponseWithPassword
+from app.schemas.user import UserResponse, UserResponseWithPassword
 from app.schemas.token import TokenData
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.model import User
 from app.core.database import get_db
-
+from app.models.model import  RevokedToken
 
 SECRET_KEY: str = settings.SECRETE_KEY
 ALGORITHM: str = settings.ALGORITHM_TOKEN
@@ -66,20 +66,25 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> t
         expire = now_time+ timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt, now_time, expire
+    return encoded_jwt, expire
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Annotated[Session, Depends(get_db)]) -> UserResponse:
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        revoked_token_exist = db.query(RevokedToken).filter(RevokedToken.token == token).first()
+        
+        if revoked_token_exist:
+            raise credentials_exception
+        
+        payload = get_playload(token)
         now_time = datetime.now(timezone.utc)
         
         
         username = payload.get("sub")        
         date_expires =  payload.get("exp")
         
-        if date_expires > now_time and not date_expires:
+        if date_expires > now_time or not date_expires:
             raise credentials_expires
         
         if username is None:
@@ -123,3 +128,8 @@ async def get_only_super_admin(current_user: Annotated[UserResponse, Depends(get
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not super admin")
     return current_user
+
+def get_playload(token: str):
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    return payload
+    

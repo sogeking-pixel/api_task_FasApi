@@ -1,5 +1,5 @@
 from app.core.database import Base
-from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Text
 from sqlalchemy import Enum as SQLAEnum
 from app.schemas.user import TypeUserModel, StatusUserModel
 from app.schemas.task import PriorityModel
@@ -25,7 +25,7 @@ class Token(Base):
     __tablename__ = "tokens"
 
     id = Column(Integer, primary_key=True, nullable=False)
-    access_token = Column(String, nullable=False, unique=True)
+    access_token = Column(Text, nullable=False, unique=True)
     user_id = Column(Integer, ForeignKey('users.id')) 
     created_at = Column(DateTime, nullable=False)
     expires_at = Column(DateTime, nullable=False) 
@@ -42,3 +42,11 @@ class Task(Base):
     user_id = Column(Integer, ForeignKey('users.id')) 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class RevokedToken(Base):
+    __tablename__ = "revoked_tokens"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    token = Column(Text, unique=True, index=True) 
+    revoked_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    expires_at = Column(DateTime) 

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, Depends
 from typing import List, Annotated
 from app.schemas.user import TypeUserModel, StatusUserModel, UserCreateModel, UserResponseModel
-from app.utils.util import validate_len, verify_key, verify_token, CommonQueryParams, PaginationParams
+from app.utils.util import verify_key, CommonQueryParams, PaginationParams
 from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user
 
 from sqlalchemy.orm import Session
