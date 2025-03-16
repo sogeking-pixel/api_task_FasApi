@@ -4,7 +4,6 @@ from typing import Annotated
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.core.database import Base
 
 API_KEY: str = settings.API_KEY
 
@@ -13,19 +12,10 @@ def validated_key(key: str):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inconrrect Key")
     return key
 
-
-def validate_len(i: int, list_generic: list)-> bool:
-    return list_generic and i < len(list_generic) and i >= 0
-
-
 def check_valid_search(search: str):
     if not len(search.strip())<3:
         raise ValueError('the length of the search string is less than 3')
     return str
-
-async def verify_token(token_header : Annotated[str, Query(min_length=30), Header()]):
-    if token_header != "fake-super-secret-token":
-        raise HTTPException(status_code=400, detail="X-Token header invalid")
 
 
 async def verify_key(api_key: Annotated[str, Header(), AfterValidator(validated_key)] ):

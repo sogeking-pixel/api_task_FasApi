@@ -30,5 +30,8 @@ class UserResponse(UserBaseModel):
     id: int
     type_user : TypeUserModel
     status_account : StatusUserModel
+
+class UserResponseWithPassword(UserResponse):
+    password: str
     
     
