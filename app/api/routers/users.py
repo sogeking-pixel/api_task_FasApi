@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Annotated
-from app.schemas.user import TypeUserModel, StatusUserModel, UserCreate, UserResponse
-from app.utils.util import verify_key, CommonQueryParams, PaginationParams
-from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user
+from app.schemas.user import TypeUserModel, StatusUserModel, UserResponse, UserCreate
+from app.utils.util import CommonQueryParams, PaginationParams, db_create
+from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user, get_password_hash
 
 from sqlalchemy.orm import Session
 from app.models.model import User
@@ -50,6 +50,21 @@ async def read_users(
     
     return query.all()
 
+@router.post('/create_admin', status_code=201)
+async def sign_up(current_user: Annotated[UserResponse, Depends(get_only_super_admin)], user: UserCreate, db: Annotated[Session, Depends(get_db)])->dict:
+    
+    user.first_name = user.first_name.lower()
+    user.last_name = user.last_name.lower()
+    user.username =  user.username.lower()
+    
+    user_exists  = db.query(User).filter(User.username == user.username).first()
+    if user_exists:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,  detail="Username is existed",)
+    user.password = get_password_hash(user.password)
+    userdata = user.model_dump()
+    userdata["type_user"] = "admin"
+    db_user = db_create(db, User( **userdata ))
+    return {'msg': 'create!', 'user': UserResponse(db_user)}
 
 @router.get('/me')
 async def get_user( 

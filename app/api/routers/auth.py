@@ -22,12 +22,14 @@ async def sign_up(user: UserCreate, db: Annotated[Session, Depends(get_db)])->di
     user.last_name = user.last_name.lower()
     user.username =  user.username.lower()
     
+    
     user_exists  = db.query(User).filter(User.username == user.username).first()
     if user_exists:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,  detail="Username is existed",)
-    
+    userdata = user.model_dump()
+    userdata["type_user"] = "client"
     user.password = get_password_hash(user.password)
-    db_user = db_create(db, User( **user.model_dump() ))
+    db_user = db_create(db, User( **userdata ))
     return {'msg': 'create!', 'user': UserResponse(db_user)}
 
 
