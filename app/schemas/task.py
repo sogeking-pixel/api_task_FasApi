@@ -11,13 +11,17 @@ class PriorityModel(str, Enum):
     medium  = "medium"
     high = "high"
 
-class TaskModel(BaseModel):
-    id: int
+class TaskBaseModel(BaseModel):
     title: str
     description: str | None = None
     priority: PriorityModel = PriorityModel.medium
     completed: bool = False
     user_id: int
-    
     class Config:
         orm_mode = True
+
+class TaskResponse(TaskBaseModel):
+    id: int
+
+class TaskCreate(TaskBaseModel):
+    pass

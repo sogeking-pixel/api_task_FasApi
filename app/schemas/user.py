@@ -13,22 +13,22 @@ class StatusUserModel(str, Enum):
     activate = 'activate'
     
 class UserBaseModel(BaseModel):
-    id: int
     first_name: str
     last_name: str
     dni: str
     username: str
     date_born: date
-    type_user : TypeUserModel
-    status_account : StatusUserModel = StatusUserModel.activate
     class Config:
         orm_mode = True
         from_attributes = True 
     
     
-class UserCreateModel(UserBaseModel):
+class UserCreate(UserBaseModel):
     password: str
     
-class UserResponseModel(UserBaseModel):
-    pass
+class UserResponse(UserBaseModel):
+    id: int
+    type_user : TypeUserModel
+    status_account : StatusUserModel
+    
     
