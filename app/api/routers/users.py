@@ -68,8 +68,8 @@ async def sign_up(current_user: Annotated[UserResponse, Depends(get_only_super_a
 
 @router.get('/me')
 async def get_user( 
-    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)]
-)->UserResponseModel:    
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)]
+)->UserResponse:    
     return current_user
 
 

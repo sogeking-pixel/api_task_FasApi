@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException, Query, Path,  status, Depends
+from fastapi import APIRouter, HTTPException, Query,  status, Depends
 from typing import List
-from app.schemas.task import TaskModel, PriorityModel
-from app.schemas.user import UserResponseModel
+from app.schemas.task import TaskResponse, TaskCreate, PriorityModel
+from app.schemas.user import UserResponse
 from typing import Annotated
-from app.utils.util import CommonQueryParams, verify_token, verify_key, validate_len, db_create, PaginationParams
+from app.utils.util import CommonQueryParams, verify_key, db_create, PaginationParams
 from app.utils.token import get_current_active_user, get_only_admin
 from sqlalchemy.orm import Session
 from app.models.model import Task
@@ -13,7 +13,7 @@ from app.core.database import get_db
 router = APIRouter()
 
 
-dependencies_token = [Depends(verify_token), Depends(verify_key)]
+# dependencies_token = [Depends(verify_token), Depends(verify_key)]
 paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]  
 commonsDep = Annotated[CommonQueryParams, Depends(CommonQueryParams)]
 
@@ -22,11 +22,11 @@ commonsDep = Annotated[CommonQueryParams, Depends(CommonQueryParams)]
 @router.get('/', status_code=status.HTTP_200_OK)
 async def read_task(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     commons: commonsDep,
     pagination: paginationparams,
     priority: PriorityModel|None = None,
-    )-> List[TaskModel]:
+    )-> List[TaskResponse]:
     
     
     query = db.query(Task)
@@ -54,8 +54,8 @@ async def read_task(
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_task(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
-    task: TaskModel
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
+    task: TaskCreate
 ) -> dict:
     
     task.user_id = current_user.id
@@ -71,7 +71,7 @@ async def create_task(
     return {
         'status': 'success',
         'message': 'Task created successfully',
-        'data': db_task
+        'data': TaskResponse(db_task)
     }
         
     
@@ -79,9 +79,9 @@ async def create_task(
 @router.get('/{task_id}')
 async def get_task(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponseModel, Depends(get_only_admin)],
+    current_user: Annotated[UserResponse, Depends(get_only_admin)],
     task_id: int,
-    )->TaskModel:
+    )->TaskResponse:
     if current_user.type_user == "client":
         taks = db.query(Task).filter(Task.id == task_id, current_user.id == Task.user_id).first()
     else:
@@ -92,7 +92,7 @@ async def get_task(
 @router.delete('/{task_id}')
 async def delete_task( 
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponseModel, 
+    current_user: Annotated[UserResponse, 
     Depends(get_current_active_user)],
     task_id: int
 )->dict:
@@ -103,9 +103,9 @@ async def delete_task(
 @router.put('/{task_id}')
 async def update(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task_id: int,
-    task: TaskModel
+    task: TaskCreate
 ) -> dict:
     
     existing_task = db.query(Task).filter(
@@ -131,7 +131,7 @@ async def update(
 @router.patch('/{task_id}')
 async def update_parts(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task_id: int, 
     priority: PriorityModel|None = None, 
     title: str|None = Query(default=None, max_length=50), 
@@ -181,7 +181,7 @@ async def update_parts(
 @router.post('/{task_id}/complete')
 async def complete_task(
     db: Annotated[Session, Depends(get_db)], 
-    current_user: Annotated[UserResponseModel, Depends(get_current_active_user)],
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task_id: int
 )->dict:
     result = db.query(Task).filter(
