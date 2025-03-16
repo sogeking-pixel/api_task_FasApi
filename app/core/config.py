@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     API_PREFIX: str
     DEBUG: bool
     POSTGRESQL_URL: str
-    SECRETE_KEY: str
+    SECRET_KEY: str
     ALGORITHM_TOKEN: str
     ACCESS_TOKEN_EXPIRE_MINUTES: str
     API_KEY: str

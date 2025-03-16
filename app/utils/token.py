@@ -14,7 +14,7 @@ from app.models.model import User
 from app.core.database import get_db
 from app.models.model import  RevokedToken
 
-SECRET_KEY: str = settings.SECRETE_KEY
+SECRET_KEY: str = settings.SECRET_KEY
 ALGORITHM: str = settings.ALGORITHM_TOKEN
 ACCESS_TOKEN_EXPIRE_MINUTES: str = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
@@ -29,7 +29,7 @@ credentials_exception = HTTPException(
         headers={"WWW-Authenticate": "Bearer"},
     )
 credentials_expires = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZE,
+        status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
