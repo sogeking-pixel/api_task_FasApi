@@ -16,12 +16,13 @@ class TaskBaseModel(BaseModel):
     description: str | None = None
     priority: PriorityModel = PriorityModel.medium
     completed: bool = False
-    user_id: int
     class Config:
         orm_mode = True
+        from_attributes = True 
 
 class TaskResponse(TaskBaseModel):
     id: int
+    user_id: int
 
 class TaskCreate(TaskBaseModel):
     pass

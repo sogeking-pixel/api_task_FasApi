@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Body, status, Depends
 from typing import Annotated 
 from app.schemas.user import UserCreate, UserResponse
-from app.schemas.token import TokenCreate
+from app.schemas.token import TokenCreate, TokenModel
 from app.utils.util import verify_key, db_create
 from app.utils.token import create_access_token, get_password_hash, authenticate_user, oauth2_scheme, get_playload
+from fastapi.security import OAuth2PasswordRequestForm
 
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -26,31 +27,34 @@ async def sign_up(user: UserCreate, db: Annotated[Session, Depends(get_db)])->di
     user_exists  = db.query(User).filter(User.username == user.username).first()
     if user_exists:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,  detail="Username is existed",)
+    
+    user.password = get_password_hash(user.password)
+    
     userdata = user.model_dump()
     userdata["type_user"] = "client"
-    user.password = get_password_hash(user.password)
-    db_user = db_create(db, User( **userdata ))
-    return {'msg': 'create!', 'user': UserResponse(db_user)}
-
-
-
-@router.post('/login')
-async def login(db: Annotated[Session, Depends(get_db)],username: Annotated[str, Body()], password: Annotated[str, Body()])->dict:
     
-    user = authenticate_user(db, username, password)
+    db_user = db_create(db, User( **userdata ))
+    return {'msg': 'create!', 'user': UserResponse.model_validate(db_user)}
+
+
+
+@router.post('/login', name="auth.login")
+async def login(db: Annotated[Session, Depends(get_db)],  form_data: Annotated[OAuth2PasswordRequestForm, Depends()],)->TokenModel:
+    
+    user = authenticate_user(db, form_data.username, form_data.password)
     
     if not user:
         raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Could not validate credentials")
     
-    token_str, date_expire = create_access_token(user)
+    token_str, date_expire, date_now = create_access_token(user)
    
-    token = TokenCreate(token_type="bear", access_token=token_str, expires_at=date_expire, user_id=user.id)
+    token = TokenCreate( access_token=token_str, expires_at=date_expire, user_id=user.id, created_at = date_now)
     
     db_token = db_create(db, Token(**token.model_dump()))
     
-    return {'msg': 'logeado!', 'token': db_token.access_token}
+    return TokenModel(access_token=token_str, token_type="bearer")
 
 
 @router.post('/logout')

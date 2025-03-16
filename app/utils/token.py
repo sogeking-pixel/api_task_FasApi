@@ -21,7 +21,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES: str = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -57,16 +57,17 @@ def authenticate_user(db: Session, username: str, password: str) -> UserResponse
     return user
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> tuple[str, datetime, datetime]:
-    to_encode = data.copy()
+def create_access_token(user: UserResponse, expires_delta: timedelta | None = None) -> tuple[str, datetime, datetime]:
+    to_encode = {"sub": user.username}
     now_time = datetime.now(timezone.utc)
     if expires_delta:
         expire = now_time + expires_delta
     else:
-        expire = now_time+ timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = now_time + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt, expire
+    return encoded_jwt, expire, now_time
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Annotated[Session, Depends(get_db)]) -> UserResponse:
@@ -83,8 +84,9 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: An
         
         username = payload.get("sub")        
         date_expires =  payload.get("exp")
+        new_date_expires = datetime.fromtimestamp(date_expires, tz=timezone.utc)
         
-        if date_expires > now_time or not date_expires:
+        if now_time > new_date_expires or not date_expires:
             raise credentials_expires
         
         if username is None:

@@ -3,7 +3,7 @@ from typing import List
 from app.schemas.task import TaskResponse, TaskCreate, PriorityModel
 from app.schemas.user import UserResponse
 from typing import Annotated
-from app.utils.util import CommonQueryParams, verify_key, db_create, PaginationParams
+from app.utils.util import CommonQueryParams, db_create, PaginationParams
 from app.utils.token import get_current_active_user, get_only_admin
 from sqlalchemy.orm import Session
 from app.models.model import Task
@@ -57,10 +57,10 @@ async def create_task(
     current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task: TaskCreate
 ) -> dict:
+    data_taks = task.model_dump()
+    data_taks['user_id'] = current_user.id
     
-    task.user_id = current_user.id
-    
-    db_task = db_create(db, Task(task))
+    db_task = db_create(db, Task(**data_taks))
     
     if not db_task:
         raise HTTPException(
@@ -71,7 +71,7 @@ async def create_task(
     return {
         'status': 'success',
         'message': 'Task created successfully',
-        'data': TaskResponse(db_task)
+        'data': TaskResponse.model_validate(db_task)
     }
         
     
@@ -86,7 +86,7 @@ async def get_task(
         taks = db.query(Task).filter(Task.id == task_id, current_user.id == Task.user_id).first()
     else:
         taks = db.query(Task).filter(Task.id == task_id ).first()
-    return taks
+    return TaskResponse.model_validate(taks)
 
 
 @router.delete('/{task_id}')
@@ -173,7 +173,7 @@ async def update_parts(
         )
     db.commit()
     task = db.query(Task).filter(Task.id == task_id).first()    
-    return {'msg': 'updated!', 'task': task}
+    return {'msg': 'updated!', 'task':TaskResponse.model_validate(task) }
     
    
 

@@ -10,7 +10,7 @@ API_KEY: str = settings.API_KEY
 def validated_key(key: str):
     if not key.startswith('API GROSSO|'):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inconrrect Key")
-    return key
+    return  key.replace("API GROSSO|",'')
 
 def check_valid_search(search: str):
     if not len(search.strip())<3:
