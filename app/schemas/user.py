@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
 from datetime import date
 
@@ -18,9 +18,7 @@ class UserBaseModel(BaseModel):
     dni: str
     username: str
     date_born: date
-    class Config:
-        orm_mode = True
-        from_attributes = True 
+    model_config = ConfigDict(from_attributes=True) 
     
     
 class UserCreate(UserBaseModel):

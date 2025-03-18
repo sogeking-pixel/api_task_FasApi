@@ -5,7 +5,6 @@ from fastapi.security import OAuth2PasswordBearer
 from app.core.database import Base, engine
 from contextlib import asynccontextmanager
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup logic
@@ -15,6 +14,7 @@ async def lifespan(app: FastAPI):
     print("✅ Tablas creadas o ya existen.")
     yield 
 
+
 app = FastAPI(
     title = settings.PROJECT_NAME,
     description = settings.PROJECT_DESCRIPTION,
@@ -22,6 +22,7 @@ app = FastAPI(
     debug = settings.DEBUG,
     lifespan=lifespan
 )
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app.include_router(api_router, prefix=settings.API_PREFIX)
@@ -33,9 +34,9 @@ app.include_router(api_router, prefix=settings.API_PREFIX)
 # async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
 #     return {"token": token}
 
-# @app.get('/')
-# async def read_root():
-#     return {"Hello": "World"}
+@app.get('/')
+async def read_root():
+    return {"Hello": "World"}
 
 
 
