@@ -3,7 +3,7 @@ from app.core.config import settings
 from fastapi import status
 from app.models.model import User, Token
 from sqlalchemy.orm import Session
-from tests.main import url_user, client_create, url_create_admin, url_me, url_login
+from tests.main import url_admin, client_create, url_login
 
 def get_token(client, data_login: dict)->str:
     response = client.post(
@@ -19,8 +19,6 @@ def test_user_get_successful(client: TestClient, test_user: User, db: Session, t
         "username": "testuser",
         "password": "testpassword"
     }
-    
-   
         
     
     login_data_super_admin = {
@@ -33,12 +31,10 @@ def test_user_get_successful(client: TestClient, test_user: User, db: Session, t
     
     def verificate(token_user):
         response = client.get(
-            url_user,
+            f"{url_admin}/users",
             headers={"token":token_user},     
         )
         assert response.status_code == status.HTTP_200_OK
-        assert "access_token" in response.json()
-        assert response.json()["token_type"] == "bearer"
-        token_in_db = db.query(Token).filter(Token.user_id == test_user.id).first()
-        assert token_in_db is not None
-        assert token_in_db.access_token == response.json()["access_token"]
+    
+    verificate(access_token_admin)
+    verificate(access_token_super_admin)

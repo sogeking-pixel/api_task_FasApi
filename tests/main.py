@@ -17,11 +17,10 @@ client_create = {
   "password": "string"
 }
 
-url_user =   settings.API_PREFIX+'/users/'
-url_me =   settings.API_PREFIX+'/users/me'
-url_create_admin =  settings.API_PREFIX+'/user/create_admin'
+url_admin =  settings.API_PREFIX+'/admin'
 
-url_tak =   settings.API_PREFIX+'/tasks/'
+url_client =   settings.API_PREFIX+'/users'
+
 
 task_create = {
     "title" : "title test",
