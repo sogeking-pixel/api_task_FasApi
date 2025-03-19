@@ -34,6 +34,6 @@ class UserResponse(UserBaseModel):
 class UserResponseWithPassword(UserResponse):
     password: str
 
-class PaginationTaskResponse(PaginationBaseModel):
+class PaginationUserResponse(PaginationBaseModel):
     data : list[UserResponse]
     

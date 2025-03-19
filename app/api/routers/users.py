@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Annotated
-from app.schemas.user import TypeUserModel, StatusUserModel, UserResponse, UserCreate
+from app.schemas.user import TypeUserModel, StatusUserModel, UserResponse, UserCreate, PaginationUserResponse
 from app.utils.util import CommonQueryParams, PaginationParams, db_create
 from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user, get_password_hash
 
@@ -15,7 +15,7 @@ router = APIRouter()
 commonparams  =  Annotated[CommonQueryParams, Depends(CommonQueryParams)]
 paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]
 
-@router.get('/', response_model=list[UserResponse])
+@router.get('/', response_model=PaginationUserResponse)
 async def read_users(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponse, Depends(get_only_admin)], 
@@ -23,8 +23,7 @@ async def read_users(
     pagination: paginationparams,
     type_user: TypeUserModel | None = None, 
     status_user: StatusUserModel | None = None,
-   
-) -> List[UserResponse]:
+) -> PaginationUserResponse:
     
     query = db.query(User)
     
@@ -45,10 +44,25 @@ async def read_users(
             User.first_name.desc() if common.sort == 'desc' 
             else User.first_name.asc()
         )
+    total_data = query.count()
     
-    query = query.offset(pagination.offset).limit(pagination.page_size)
+    next_link = None
+    previous_link = None
     
-    return query.all()
+    if pagination.offset + pagination.page_size < total_data:
+        next_link = f"?offset={pagination.offset + pagination.page_size}&page_size={pagination.page_size}"
+        
+    if pagination.offset > 0:
+        previous_link = f"?offset={max(0, pagination.offset - pagination.page_size)}&page_size={pagination.page_size}"
+    
+    users = query.offset(pagination.offset).limit(pagination.page_size).all()
+    
+    return PaginationUserResponse(
+        count=total_data,
+        next_link=next_link,
+        previous_link=previous_link,
+        data=[UserResponse.model_validate(user) for user in users]
+    )
 
 @router.post('/create_admin', status_code=201)
 async def sign_up(current_user: Annotated[UserResponse, Depends(get_only_super_admin)], user: UserCreate, db: Annotated[Session, Depends(get_db)])->dict:
