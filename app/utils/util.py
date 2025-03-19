@@ -4,6 +4,7 @@ from typing import Annotated
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from urllib.parse import urlencode
 
 API_KEY: str = settings.API_KEY
 
@@ -50,6 +51,19 @@ class PaginationParams:
         self.page_size = page_size
         self.offset = (page - 1) * page_size
         
+    def return_link_pagination(self, total_data: int, url_base: str)->list[str|None]:
+        next_link = None
+        previous_link = None
+        
+        if self.offset + self.page_size < total_data:
+            next_params = {"page": self.page + 1, "page_size": self.page_size}
+            next_link = f"{url_base}?{urlencode(next_params)}"
+            
+        if self.offset > 0:
+            prev_params = {"page": max(1, self.page - 1), "page_size": self.page_size}
+            previous_link = f"{url_base}?{urlencode(prev_params)}"
+        return previous_link, next_link
+        
 def db_create(db: Session, data: any):
     try:
         db.add(data)  
@@ -63,3 +77,6 @@ def db_create(db: Session, data: any):
             detail=f"Error al crear registro: {str(e)}"
         )
     return data
+
+
+    

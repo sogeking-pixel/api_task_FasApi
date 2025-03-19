@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List, Annotated
 from app.schemas.user import TypeUserModel, StatusUserModel, UserResponse, UserCreate, PaginationUserResponse
-from app.utils.util import CommonQueryParams, PaginationParams, db_create
+from app.utils.util import CommonQueryParams, PaginationParams, db_create, return_link_pagination
 from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user, get_password_hash
 
 from sqlalchemy.orm import Session
@@ -15,8 +15,9 @@ router = APIRouter()
 commonparams  =  Annotated[CommonQueryParams, Depends(CommonQueryParams)]
 paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]
 
-@router.get('/', response_model=PaginationUserResponse)
+@router.get('/', response_model=PaginationUserResponse, name="get_users")
 async def read_users(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponse, Depends(get_only_admin)], 
     common: commonparams, 
@@ -44,16 +45,11 @@ async def read_users(
             User.first_name.desc() if common.sort == 'desc' 
             else User.first_name.asc()
         )
-    total_data = query.count()
-    
-    next_link = None
-    previous_link = None
-    
-    if pagination.offset + pagination.page_size < total_data:
-        next_link = f"?offset={pagination.offset + pagination.page_size}&page_size={pagination.page_size}"
         
-    if pagination.offset > 0:
-        previous_link = f"?offset={max(0, pagination.offset - pagination.page_size)}&page_size={pagination.page_size}"
+    total_data = query.count()
+    url_base = request.url_for("get_tasks")
+    
+    previous_link, next_link = pagination.return_link_pagination(total_data, url_base)
     
     users = query.offset(pagination.offset).limit(pagination.page_size).all()
     
