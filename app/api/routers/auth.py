@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Body, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import Annotated 
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.token import TokenCreate, TokenModel
@@ -13,6 +13,7 @@ from app.core.database import get_db
 from jwt.exceptions import InvalidTokenError
 
 from datetime import datetime, timezone
+
 router = APIRouter()
 
 

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from typing import List, Annotated
+from typing import Annotated
 from app.schemas.user import TypeUserModel, StatusUserModel, UserResponse, UserCreate, PaginationUserResponse
-from app.utils.util import CommonQueryParams, PaginationParams, db_create, return_link_pagination
-from app.utils.token import get_only_admin, get_only_super_admin, get_current_active_user, get_password_hash
+from app.utils.util import CommonQueryParams, PaginationParams, db_create
+from app.utils.token import get_only_admin, get_only_super_admin,get_password_hash
 
 from sqlalchemy.orm import Session
 from app.models.model import User
@@ -15,7 +15,7 @@ router = APIRouter()
 commonparams  =  Annotated[CommonQueryParams, Depends(CommonQueryParams)]
 paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]
 
-@router.get('/', response_model=PaginationUserResponse, name="get_users")
+@router.get('/users', response_model=PaginationUserResponse, name="admin.get_users")
 async def read_users(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -47,7 +47,7 @@ async def read_users(
         )
         
     total_data = query.count()
-    url_base = request.url_for("get_tasks")
+    url_base = request.url_for("admin.get_users")
     
     previous_link, next_link = pagination.return_link_pagination(total_data, url_base)
     
@@ -60,8 +60,9 @@ async def read_users(
         data=[UserResponse.model_validate(user) for user in users]
     )
 
+
 @router.post('/create_admin', status_code=201)
-async def sign_up(current_user: Annotated[UserResponse, Depends(get_only_super_admin)], user: UserCreate, db: Annotated[Session, Depends(get_db)])->dict:
+async def create_admin(current_user: Annotated[UserResponse, Depends(get_only_super_admin)], user: UserCreate, db: Annotated[Session, Depends(get_db)])->dict:
     
     user.first_name = user.first_name.lower()
     user.last_name = user.last_name.lower()
@@ -76,14 +77,9 @@ async def sign_up(current_user: Annotated[UserResponse, Depends(get_only_super_a
     db_user = db_create(db, User( **userdata ))
     return {'msg': 'create!', 'user': UserResponse(db_user)}
 
-@router.get('/me')
-async def get_user( 
-    current_user: Annotated[UserResponse, Depends(get_current_active_user)]
-)->UserResponse:    
-    return current_user
 
 
-@router.get('/{user_id}', status_code=201, response_model=UserResponse)
+@router.get('/users/{user_id}', status_code=201, response_model=UserResponse)
 async def get_user( 
     current_user: Annotated[UserResponse, Depends(get_only_admin)], 
     user_id: int,
@@ -95,8 +91,8 @@ async def get_user(
     return user
         
     
-@router.delete('/{user_id}')
-async def get_user(
+@router.delete('/users/{user_id}')
+async def delete_user(
     user_id: int, 
     current_user: Annotated[UserResponse, Depends(get_only_super_admin)],
     db: Annotated[Session, Depends(get_db)]
@@ -105,8 +101,8 @@ async def get_user(
     return  {'msg': "deleted!"}
 
 
-@router.patch('/{user_id}/status')
-async def get_user(
+@router.patch('/users/{user_id}/status')
+async def patch_user(
     user_id: int, 
     current_user: Annotated[UserResponse, Depends(get_only_admin)],
     db: Annotated[Session, Depends(get_db)],
@@ -118,3 +114,4 @@ async def get_user(
     else:
         db.query(User).filter(User.id == user_id and User.type_user != 'super_admin').update({'status_account': status})
     return  {'msg': "update status user!"}
+

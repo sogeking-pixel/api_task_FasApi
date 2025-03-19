@@ -1,10 +1,9 @@
-from fastapi import APIRouter, HTTPException, Query,  status, Depends
-from typing import List
-from app.schemas.task import TaskResponse, TaskCreate, PriorityModel
+from fastapi import APIRouter, HTTPException, Query,  status, Depends, Request
+from app.schemas.task import TaskResponse, TaskCreate, PriorityModel, PaginationTaskResponse
 from app.schemas.user import UserResponse
 from typing import Annotated
 from app.utils.util import CommonQueryParams, db_create, PaginationParams
-from app.utils.token import get_current_active_user, get_only_admin
+from app.utils.token import get_current_active_user
 from sqlalchemy.orm import Session
 from app.models.model import Task
 from app.core.database import get_db
@@ -12,51 +11,69 @@ from app.core.database import get_db
 
 router = APIRouter()
 
+commonparams  =  Annotated[CommonQueryParams, Depends(CommonQueryParams)]
+paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]
 
-# dependencies_token = [Depends(verify_token), Depends(verify_key)]
-paginationparams  = Annotated[PaginationParams, Depends(PaginationParams)]  
-commonsDep = Annotated[CommonQueryParams, Depends(CommonQueryParams)]
-
-
-# completed!
-@router.get('/', status_code=status.HTTP_200_OK)
-async def read_task(
+@router.get('/{user_id}/tasks', response_model=PaginationTaskResponse, name="user_get_tasks")
+async def read_user_tasks(
+    request: Request,
+    user_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
-    commons: commonsDep,
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)], 
+    common: commonparams, 
     pagination: paginationparams,
-    priority: PriorityModel|None = None,
-    )-> List[TaskResponse]:
+    priority: PriorityModel|None = None,    
+) -> PaginationTaskResponse:
     
+    if current_user.type_user == "client" and user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Task unauthorized"
+        )
     
-    query = db.query(Task)
-    
-    if current_user.type_user == "client":
+    if current_user.type_user == "client" :
         query = query.filter(Task.user_id == current_user.id)
+        
+    query = db.query(Task).filter(Task.user_id == user_id)
     
     if priority:
         query = query.filter(Task.priority == priority)
     
-    if commons.search:
-        query = query.filter(Task.title.ilike(f'%{commons.search}%'))
+    if common.search:
+        query = query.filter(Task.title.ilike(f'%{common.search}%'))
     
-    if commons.sort:
+    if common.sort:
         query = query.order_by(
-            Task.title.desc() if commons.sort == 'desc' 
+            Task.title.desc() if common.sort == 'desc' 
             else Task.title.asc()
         )
+    total_data = query.count()
+    url_base = request.url_for("get_tasks", user_id = user_id )
     
-    query = query.offset(pagination.offset).limit(pagination.page_size)
+    previous_link, next_link = pagination.return_link_pagination(total_data, url_base)
     
-    return query.all()
+    tasks = query.offset(pagination.offset).limit(pagination.page_size).all()
+    
+    return  PaginationTaskResponse(
+        count=total_data,
+        next_link=next_link,
+        previous_link=previous_link,
+        data=[TaskResponse.model_validate(task) for task in tasks]
+    )
 
 
-@router.post('/', status_code=status.HTTP_201_CREATED)
+@router.post('/{user_id}/tasks', status_code=status.HTTP_201_CREATED)
 async def create_task(
+    user_id:int, 
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task: TaskCreate
 ) -> dict:
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="created unauthorized"
+        )
     data_taks = task.model_dump()
     data_taks['user_id'] = current_user.id
     
@@ -76,12 +93,19 @@ async def create_task(
         
     
 
-@router.get('/{task_id}')
+@router.get('/{user_id}/tasks/{task_id}')
 async def get_task(
+    user_id:int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[UserResponse, Depends(get_only_admin)],
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task_id: int,
     )->TaskResponse:
+    if current_user.type_user == "client" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Task unauthorized"
+        )
+    
     if current_user.type_user == "client":
         taks = db.query(Task).filter(Task.id == task_id, current_user.id == Task.user_id).first()
     else:
@@ -89,25 +113,40 @@ async def get_task(
     return TaskResponse.model_validate(taks)
 
 
-@router.delete('/{task_id}')
-async def delete_task( 
+@router.delete('/{user_id}/tasks/{task_id}')
+async def delete_task(
+    user_id: int, 
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponse, 
     Depends(get_current_active_user)],
     task_id: int
 )->dict:
+    
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="delete unauthorized"
+        )
+        
     db.query(Task).filter(Task.id == task_id, current_user.id == Task.user_id).delete()
     return {'msg': "deleted!"}
 
 
-@router.put('/{task_id}')
-async def update(
+@router.put('/{user_id}/tasks/{task_id}')
+async def update_task(
+    user_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task_id: int,
     task: TaskCreate
 ) -> dict:
     
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="put unauthorized"
+        )
+        
     existing_task = db.query(Task).filter(
         Task.id == task_id,
         Task.user_id == current_user.id
@@ -128,8 +167,9 @@ async def update(
     return {'msg': 'updated!', 'task': existing_task}
 
 
-@router.patch('/{task_id}')
-async def update_parts(
+@router.patch('/{user_id}/tasks/{task_id}')
+async def update_parts_task(
+    user_id:int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[UserResponse, Depends(get_current_active_user)],
     task_id: int, 
@@ -137,7 +177,11 @@ async def update_parts(
     title: str|None = Query(default=None, max_length=50), 
     description: str|None = None
 )->dict:
-    
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="put unauthorized"
+        )
     task = db.query(Task).filter(
         Task.id == task_id,
         Task.user_id == current_user.id
@@ -177,18 +221,24 @@ async def update_parts(
     
    
 
-
-@router.post('/{task_id}/complete')
+@router.post('/{user_id}/{task_id}/complete')
 async def complete_task(
+    user_id : int,
     db: Annotated[Session, Depends(get_db)], 
     current_user: Annotated[UserResponse, Depends(get_current_active_user)],
-    task_id: int
+    task_id : int
 )->dict:
     result = db.query(Task).filter(
     Task.id == task_id,
     Task.user_id == current_user.id
     ).update({'completed': True})
-
+    
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="put unauthorized"
+        )
+        
     if result == 0:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
