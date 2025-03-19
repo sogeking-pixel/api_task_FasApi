@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from enum import Enum
-
+from app.schemas.response_pagination import PaginationBaseModel
 
 class SortModel(str, Enum):
     asc = 'asc'
@@ -24,3 +24,6 @@ class TaskResponse(TaskBaseModel):
 
 class TaskCreate(TaskBaseModel):
     pass
+
+class PaginationTaskResponse(PaginationBaseModel):
+    data : list[TaskResponse]

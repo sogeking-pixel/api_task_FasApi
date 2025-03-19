@@ -81,9 +81,53 @@ def test_user(db):
         "password": get_password_hash("testpassword")
     }
     
+    
     user = User(**user_data)
     db.add(user)
     db.commit()
     db.refresh(user)
     
     return user
+
+@pytest.fixture
+def test_user_super_admin(db):
+    from app.models.model import User
+    from app.utils.token import get_password_hash
+    
+    user_data_super_admin = {
+        "first_name": "Test",
+        "last_name": "User Super Admin",
+        "dni": "9876543",
+        "username": "testsuperadmin",
+        "date_born": "2000-01-01",
+        "password": get_password_hash("testpassword"),
+        "type_user": "super_admin"
+    }
+    
+    user_super_admin = User(**user_data_super_admin)
+    db.add(user_super_admin)
+    db.commit()
+    db.refresh(user_super_admin)
+    return user_super_admin
+
+
+@pytest.fixture
+def test_user_admin(db):
+    from app.models.model import User
+    from app.utils.token import get_password_hash
+    
+    user_data_super_admin = {
+        "first_name": "Test",
+        "last_name": "User Admin",
+        "dni": "9876543",
+        "username": "testsadmin",
+        "date_born": "2000-01-01",
+        "password": get_password_hash("testpassword"),
+        "type_user": "admin"
+    }
+    
+    user_admin = User(**user_data_super_admin)
+    db.add(user_admin)
+    db.commit()
+    db.refresh(user_admin)
+    return user_admin

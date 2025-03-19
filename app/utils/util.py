@@ -7,20 +7,37 @@ from app.core.config import settings
 
 API_KEY: str = settings.API_KEY
 
-def validated_key(key: str):
+def validated_key(key: str|None):
+    if not key:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="The Key is missing")
     if not key.startswith('API GROSSO|'):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inconrrect Key")
     return  key.replace("API GROSSO|",'')
 
+
+# async def verify_key(api_key: Annotated[str|None, Header(), AfterValidator(validated_key)]  ):
+#     if not api_key == API_KEY:
+#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="X-Key header invalid")
+    
+async def verify_key(api_key: Annotated[str | None, Header()] = None):
+    # First check if the key exists
+    if not api_key:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="The Key is missing")
+    
+    # Now validate the key format
+    if not api_key.startswith('API GROSSO|'):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inconrrect Key")
+    
+    # Finally check if the key is correct after stripping the prefix
+    cleaned_key = api_key.replace("API GROSSO|", '')
+    if cleaned_key != API_KEY:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="X-Key header invalid")
+    
+    return True
 def check_valid_search(search: str):
     if not len(search.strip())<3:
         raise ValueError('the length of the search string is less than 3')
     return str
-
-
-async def verify_key(api_key: Annotated[str, Header(), AfterValidator(validated_key)] ):
-    if not api_key == API_KEY:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="X-Key header invalid")
     
 class CommonQueryParams:
     def __init__(self, search:  Annotated[str | None, Query(max_length=3),AfterValidator(check_valid_search)] = None, sort: SortModel|None = None):

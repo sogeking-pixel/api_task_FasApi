@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from enum import Enum
 from datetime import date
+from app.schemas.response_pagination import PaginationBaseModel
+
 
 class TypeUserModel(str, Enum):
     super_admin = "super_admin"
@@ -31,5 +33,7 @@ class UserResponse(UserBaseModel):
 
 class UserResponseWithPassword(UserResponse):
     password: str
-    
+
+class PaginationTaskResponse(PaginationBaseModel):
+    data : list[UserResponse]
     
