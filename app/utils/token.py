@@ -125,7 +125,7 @@ async def get_only_admin( current_user: Annotated[UserResponse, Depends(get_curr
 
 
 async def get_only_super_admin(current_user: Annotated[UserResponse, Depends(get_current_active_user)]):
-    if not current_user.type_user == "super_admin":
+    if current_user.type_user != "super_admin":
         raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Could not super admin")

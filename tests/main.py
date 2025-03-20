@@ -28,6 +28,11 @@ task_create = {
     "priority" : "medium"
 }
 
+login_data_user ={
+  "username" : "testuser",
+  "password" : "testpassword"
+}
+
 login_data_admin = {
   "username": "testsadmin",
   "password": "testpassword"

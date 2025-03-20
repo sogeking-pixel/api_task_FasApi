@@ -5,7 +5,7 @@ from app.utils.util import CommonQueryParams, PaginationParams, db_create
 from app.utils.token import get_only_admin, get_only_super_admin,get_password_hash
 
 from sqlalchemy.orm import Session
-from app.models.model import User
+from app.models.model import User, Task, Token
 from app.core.database import get_db
 
 router = APIRouter()
@@ -79,7 +79,7 @@ async def create_admin(current_user: Annotated[UserResponse, Depends(get_only_su
 
 
 
-@router.get('/users/{user_id}', status_code=201, response_model=UserResponse)
+@router.get('/users/{user_id}', response_model=UserResponse)
 async def get_user( 
     current_user: Annotated[UserResponse, Depends(get_only_admin)], 
     user_id: int,
@@ -96,9 +96,17 @@ async def delete_user(
     user_id: int, 
     current_user: Annotated[UserResponse, Depends(get_only_super_admin)],
     db: Annotated[Session, Depends(get_db)]
-)->dict:
-    db.query(User).filter(User.id == user_id).delete()
-    return  {'msg': "deleted!"}
+) -> dict:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    db.query(Task).filter(Task.user_id == user_id).delete()
+    db.query(Token).filter(Token.user_id == user_id).delete()
+    
+    db.delete(user)
+    db.commit()
+    return {'msg': "deleted!"}
 
 
 @router.patch('/users/{user_id}/status')
@@ -106,12 +114,12 @@ async def patch_user(
     user_id: int, 
     current_user: Annotated[UserResponse, Depends(get_only_admin)],
     db: Annotated[Session, Depends(get_db)],
-    status: str
+    status: StatusUserModel
 )->dict:
     
     if current_user.type_user == 'admin':
-        db.query(User).filter(User.id == user_id and User.type_user == 'client').update({'status_account': status})
+        db.query(User).filter(User.id == user_id, User.type_user == 'client').update({'status_account': status})
     else:
-        db.query(User).filter(User.id == user_id and User.type_user != 'super_admin').update({'status_account': status})
+        db.query(User).filter(User.id == user_id, User.type_user != 'super_admin').update({'status_account': status})
     return  {'msg': "update status user!"}
 
