@@ -109,9 +109,9 @@ async def get_current_active_user(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     if current_user.status_account ==  'suspense' :
-        raise HTTPException(status_code=400, detail="suspense user")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="suspense user")
     if current_user.status_account ==  'banned' :
-        raise HTTPException(status_code=400, detail="banned user")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="banned user")
     return current_user
 
 
@@ -119,7 +119,7 @@ async def get_current_active_user(
 async def get_only_admin( current_user: Annotated[UserResponse, Depends(get_current_active_user)],
 ):
     if current_user.type_user == "client":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not admin" )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Could not admin" )
     
     return current_user
 
@@ -127,7 +127,7 @@ async def get_only_admin( current_user: Annotated[UserResponse, Depends(get_curr
 async def get_only_super_admin(current_user: Annotated[UserResponse, Depends(get_current_active_user)]):
     if not current_user.type_user == "super_admin":
         raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=status.HTTP_403_FORBIDDEN,
         detail="Could not super admin")
     return current_user
 

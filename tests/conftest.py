@@ -67,27 +67,27 @@ def valid_api_key():
     return settings.API_KEY
 
 
-@pytest.fixture
-def test_user(db):
-    from app.models.model import User
-    from app.utils.token import get_password_hash
+# @pytest.fixture
+# def test_user(db):
+#     from app.models.model import User
+#     from app.utils.token import get_password_hash
     
-    user_data = {
-        "first_name": "Test",
-        "last_name": "User",
-        "dni": "12345678",
-        "username": "testuser",
-        "date_born": "2000-01-01",
-        "password": get_password_hash("testpassword")
-    }
+#     user_data = {
+#         "first_name": "Test",
+#         "last_name": "User",
+#         "dni": "12345678",
+#         "username": "testuser",
+#         "date_born": "2000-01-01",
+#         "password": get_password_hash("testpassword")
+#     }
     
     
-    user = User(**user_data)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+#     user = User(**user_data)
+#     db.add(user)
+#     db.commit()
+#     db.refresh(user)
     
-    return user
+#     return user
 
 @pytest.fixture
 def test_user_super_admin(db):
