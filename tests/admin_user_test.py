@@ -5,36 +5,37 @@ from app.models.model import User, Token
 from sqlalchemy.orm import Session
 from tests.main import url_admin, client_create, url_login
 
-def get_token(client, data_login: dict)->str:
+def get_token_and_type(client, data_login: dict)->list[str, str]:
     response = client.post(
         url_login,
         data=data_login, 
     )
-    return  response.json()['access_token'] 
+    return response.json()['token_type'] , response.json()['access_token'] 
 
 
-def test_user_get_successful(client: TestClient, test_user: User, db: Session, test_user_admin: User, test_user_super_admin: User):
+def test_user_get_successful(client: TestClient, db: Session, test_user_admin: User, test_user_super_admin: User):
+    
     
     login_data_admin = {
-        "username": "testuser",
+        "username": "testsadmin",
         "password": "testpassword"
     }
         
     
     login_data_super_admin = {
-        "username": "testuser",
+        "username": "testsuperadmin",
         "password": "testpassword"
     }
     
-    access_token_admin = get_token(client, login_data_admin )
-    access_token_super_admin = get_token(client, login_data_super_admin )
+    type_tokin_admin, access_token_admin = get_token_and_type(client, login_data_admin )
+    type_token_super_admin, access_token_super_admin = get_token_and_type(client, login_data_super_admin )
     
-    def verificate(token_user):
+    def verificate(type_token, token_user):
         response = client.get(
             f"{url_admin}/users",
-            headers={"token":token_user},     
+            headers={"Authorization": f"{type_token} {token_user}"},     
         )
         assert response.status_code == status.HTTP_200_OK
     
-    verificate(access_token_admin)
-    verificate(access_token_super_admin)
+    verificate(type_tokin_admin, access_token_admin)
+    verificate(type_token_super_admin, access_token_super_admin)

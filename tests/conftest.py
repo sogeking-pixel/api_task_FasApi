@@ -97,7 +97,7 @@ def test_user_super_admin(db):
     user_data_super_admin = {
         "first_name": "Test",
         "last_name": "User Super Admin",
-        "dni": "9876543",
+        "dni": "75098777",
         "username": "testsuperadmin",
         "date_born": "2000-01-01",
         "password": get_password_hash("testpassword"),
