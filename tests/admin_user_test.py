@@ -81,3 +81,24 @@ def test_user_get_invalid_token_format(client: TestClient):
         headers={"Authorization": "Bearer"}
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_user_created_admin_successful(client: TestClient, db: Session, test_user_super_admin: User):
+    type_token, access_token =  get_token_and_type(client, login_data_super_admin)
+    data_admin = {
+        "first_name" : "first name test",
+        "last_name" : "last name test",
+        "dni" : "87677777",
+        "username" : "test_admin_router",
+        "password" : "testpassword",
+        "date_born" : "2000-01-01" 
+    }
+    print(f"{type_token} {access_token}")
+    response =  client.post(url=f"{url_admin}/create_admin" ,headers={"Authorization": f"{type_token} {access_token}"}, json=data_admin)
+    
+    assert response.status_code == status.HTTP_201_CREATED
+    assert 'msg' in response.json() and response.json()['msg'] == 'create!'
+    assert "id" in response.json()['user'] 
+    assert 'user' in response.json()
+    assert response.json()['user']['username'] == data_admin['username']
+    assert "password" not in response.json()['user']  

@@ -75,7 +75,7 @@ async def create_admin(current_user: Annotated[UserResponse, Depends(get_only_su
     userdata = user.model_dump()
     userdata["type_user"] = "admin"
     db_user = db_create(db, User( **userdata ))
-    return {'msg': 'create!', 'user': UserResponse(db_user)}
+    return {'msg': 'create!', 'user': UserResponse.model_validate(db_user)}
 
 
 
