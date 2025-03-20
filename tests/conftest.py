@@ -9,6 +9,7 @@ from app.main import app
 from app.core.database import Base
 from app.core.config import settings
 from app.utils.token import get_db
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture(scope="session")
@@ -67,30 +68,35 @@ def valid_api_key():
     return settings.API_KEY
 
 
-# @pytest.fixture
-# def test_user(db):
-#     from app.models.model import User
-#     from app.utils.token import get_password_hash
+@pytest.fixture
+def test_user(db: Session):
+    from app.models.model import User
+    from app.utils.token import get_password_hash
     
-#     user_data = {
-#         "first_name": "Test",
-#         "last_name": "User",
-#         "dni": "12345678",
-#         "username": "testuser",
-#         "date_born": "2000-01-01",
-#         "password": get_password_hash("testpassword")
-#     }
+    user_data = {
+        "first_name": "Test",
+        "last_name": "User",
+        "dni": "12345678",
+        "username": "testuser",
+        "date_born": "2000-01-01",
+        "password": get_password_hash("testpassword")
+    }
+    
+    user_exists = db.query(User).filter(User.username == user_data['username']).first()
+    
+    if user_exists:
+        return user_exists  
     
     
-#     user = User(**user_data)
-#     db.add(user)
-#     db.commit()
-#     db.refresh(user)
+    user = User(**user_data)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     
-#     return user
+    return user
 
 @pytest.fixture
-def test_user_super_admin(db):
+def test_user_super_admin(db: Session):
     from app.models.model import User
     from app.utils.token import get_password_hash
     
@@ -104,6 +110,11 @@ def test_user_super_admin(db):
         "type_user": "super_admin"
     }
     
+    user_exists = db.query(User).filter(User.username == user_data_super_admin['username']).first()
+    
+    if user_exists:
+        return user_exists
+    
     user_super_admin = User(**user_data_super_admin)
     db.add(user_super_admin)
     db.commit()
@@ -112,11 +123,11 @@ def test_user_super_admin(db):
 
 
 @pytest.fixture
-def test_user_admin(db):
+def test_user_admin(db: Session):
     from app.models.model import User
     from app.utils.token import get_password_hash
     
-    user_data_super_admin = {
+    user_data_admin = {
         "first_name": "Test",
         "last_name": "User Admin",
         "dni": "9876543",
@@ -125,8 +136,12 @@ def test_user_admin(db):
         "password": get_password_hash("testpassword"),
         "type_user": "admin"
     }
+    user_exists = db.query(User).filter(User.username == user_data_admin['username']).first()
     
-    user_admin = User(**user_data_super_admin)
+    if user_exists:
+        return user_exists
+    
+    user_admin = User(**user_data_admin)
     db.add(user_admin)
     db.commit()
     db.refresh(user_admin)

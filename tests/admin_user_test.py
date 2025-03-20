@@ -23,6 +23,7 @@ def create_new_client(db: Session, user_data: dict):
     db.refresh(user)
     return user
 
+
 def test_user_get_successful(client: TestClient, db: Session, test_user_admin: User, test_user_super_admin: User, ):
     
     type_tokin_admin, access_token_admin = get_token_and_type(client, login_data_admin )
@@ -54,19 +55,10 @@ def test_user_get_unauthorized(client: TestClient, db: Session):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_user_get_forbidden(client: TestClient, db: Session):
-
-    user_data = {
-        "first_name": "Test 2",
-        "last_name": "User 2",
-        "dni": "76565565",
-        "username": "testusernose",
-        "date_born": "2000-01-01",
-    }
-    test_user_normal = create_new_client(db, user_data)
+def test_user_get_forbidden(client: TestClient, db: Session, test_user: User):
     
     type_token, access_token = get_token_and_type(client, {
-        "username": test_user_normal.username,
+        "username": test_user.username,
         "password": "testpassword"
     })
     
