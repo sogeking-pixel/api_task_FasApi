@@ -218,8 +218,7 @@ async def update_parts_task(
     db.commit()
     task = db.query(Task).filter(Task.id == task_id).first()    
     return {'msg': 'updated!', 'task':TaskResponse.model_validate(task) }
-    
-   
+      
 
 @router.post('/{user_id}/{task_id}/complete')
 async def complete_task(

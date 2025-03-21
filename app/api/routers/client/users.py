@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from typing import Annotated
 from app.schemas.user import UserResponse
 from app.utils.token import  get_current_active_user
 from app.schemas.user import UserResponse
 from app.utils.util import CommonQueryParams, PaginationParams
+from app.models.model import User, RevokedToken, Token
+from app.utils.token import get_db, get_password_hash
+from sqlalchemy.orm import Session
 
 
 router = APIRouter()
@@ -19,17 +22,34 @@ async def get_user(
 
 
 
-# @router.patch('/{user_id}/status')
-# async def get_user(
-#     user_id: int, 
-#     current_user: Annotated[UserResponse, Depends(get_only_admin)],
-#     db: Annotated[Session, Depends(get_db)],
-#     status: str
-# )->dict:
+@router.patch('/{user_id}/password')
+async def change_password(
+    user_id: int, 
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
+    db: Annotated[Session, Depends(get_db)],
+    new_password: Annotated[str, Body()]
+) -> dict:
     
-#     if current_user.type_user == 'admin':
-#         db.query(User).filter(User.id == user_id and User.type_user == 'client').update({'status_account': status})
-#     else:
-#         db.query(User).filter(User.id == user_id and User.type_user != 'super_admin').update({'status_account': status})
-#     return  {'msg': "update status user!"}
-
+    if current_user.type_user == 'client' and current_user.id != user_id:
+        raise
+    
+    user: User = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise
+     
+    if current_user.type_user == 'admin' and user.type_user != 'client':
+        raise   
+    
+    # Store all existing tokens in RevokedToken
+    tokens :list[Token] = db.query(Token).filter(Token.user_id == user_id).all()
+    for token in tokens:
+        revoked_token = RevokedToken(token=token.access_token)
+        db.add(revoked_token)
+        db.delete(token)
+    
+    user.password = get_password_hash(new_password)  
+    db.commit()
+    
+    return {'msg': "Password updated successfully!"}
+    
