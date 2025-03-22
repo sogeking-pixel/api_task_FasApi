@@ -27,14 +27,13 @@ async def read_tasks(
 ) -> PaginationTaskResponse:
     
     if current_user.type_user == 'admin':    
-        query = db.query(Task).join(User).filter(User.type_user != 'superadmin')
+        query = db.query(Task).join(User).filter(User.type_user == 'client' or (User.type_user == 'admin' and User.id == current_user.id))
     else:
         query = db.query(Task).join(User).filter(
-            (User.type_user != 'superadmin') | 
-            ((User.type_user == 'superadmin') & (User.id == current_user.id))
+            (User.type_user != 'super_admin') | 
+            ((User.type_user == 'super_admin') & (User.id == current_user.id))
         )
 
-    
     if priority:
         query = query.filter(Task.priority == priority)
     

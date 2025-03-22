@@ -25,14 +25,14 @@ def create_new_client(db: Session, user_data: dict):
 
 
 
-def test_user_get_successful(client: TestClient, db: Session, test_user_admin: User, test_user_super_admin: User, ):
+def test_tasks_get_successful(client: TestClient, db: Session, test_user_admin: User, test_user_super_admin: User, test_user: User ):
     
     type_tokin_admin, access_token_admin = get_token_and_type(client, login_data_admin )
     type_token_super_admin, access_token_super_admin = get_token_and_type(client, login_data_super_admin )
     
     def verificate(type_token, token_user):
         response = client.get(
-            f"{url_admin}/users",
+            f"{url_admin}/tasks",
             headers={"Authorization": f"{type_token} {token_user}"},     
         )
         assert response.status_code == status.HTTP_200_OK
@@ -44,96 +44,36 @@ def test_user_get_successful(client: TestClient, db: Session, test_user_admin: U
     verificate(type_tokin_admin, access_token_admin)
     verificate(type_token_super_admin, access_token_super_admin)
 
-def test_user_get_unauthorized(client: TestClient, db: Session):
-    response = client.get(f"{url_admin}/users")
+def test_tasks_get_unauthorized(client: TestClient, db: Session):
+    response = client.get(f"{url_admin}/tasks")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     response = client.get(
-        f"{url_admin}/users",
+        f"{url_admin}/tasks",
         headers={"Authorization": "Bearer invalid_token"}
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-def test_user_get_forbidden(client: TestClient, db: Session, test_user: User):
+def test_tasks_get_forbidden(client: TestClient, db: Session, test_user: User):
     
     type_token, access_token = get_token_and_type(client, login_data_user)
     
     response = client.get(
-        f"{url_admin}/users",
+        f"{url_admin}/tasks",
         headers={"Authorization": f"{type_token} {access_token}"}
     )
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
-def test_user_get_invalid_token_format(client: TestClient):
+def test_tasks_get_invalid_token_format(client: TestClient):
     response = client.get(
-        f"{url_admin}/users",
+        f"{url_admin}/tasks",
         headers={"Authorization": "InvalidFormat token123"}
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     response = client.get(
-        f"{url_admin}/users",
+        f"{url_admin}/tasks",
         headers={"Authorization": "Bearer"}
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-
-
-def test_user_created_admin_successful(client: TestClient, db: Session, test_user_super_admin: User):
-    type_token, access_token =  get_token_and_type(client, login_data_super_admin)
-    data_admin = {
-        "first_name" : "first name test",
-        "last_name" : "last name test",
-        "dni" : "87677777",
-        "username" : "test_admin_router",
-        "password" : "testpassword",
-        "date_born" : "2000-01-01" 
-    }
-    print(f"{type_token} {access_token}")
-    response =  client.post(url=f"{url_admin}/create_admin" ,headers={"Authorization": f"{type_token} {access_token}"}, json=data_admin)
-    
-    assert response.status_code == status.HTTP_201_CREATED
-    assert 'msg' in response.json() and response.json()['msg'] == 'create!'
-    assert "id" in response.json()['user'] 
-    assert 'user' in response.json()
-    assert response.json()['user']['username'] == data_admin['username']
-    assert "password" not in response.json()['user']
-    
-def test_user_created_admin_forbidden(client: TestClient, db: Session, test_user: User, test_user_admin: User):
-    type_tokin_admin, access_token_admin = get_token_and_type(client, login_data_admin )
-    type_token_user, access_token_user = get_token_and_type(client, login_data_user )
-    
-    def verificate(type_token, token_user):
-        response = client.post(
-            f"{url_admin}/create_admin",
-            headers={"Authorization": f"{type_token} {token_user}"},     
-        )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        
-    verificate(type_tokin_admin, access_token_admin)
-    verificate(type_token_user, access_token_user)
-
-def test_user_created_admin_unauthorized(client: TestClient, db: Session):
-    response = client.post(f"{url_admin}/create_admin")
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    response = client.post(
-        f"{url_admin}/create_admin",
-        headers={"Authorization": "Bearer invalid_token"}
-    )
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-def test_user_created_admin_invalid_token_format(client: TestClient):
-    response = client.post(
-        f"{url_admin}/create_admin",
-        headers={"Authorization": "InvalidFormat token123"}
-    )
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
-    response = client.post(
-        f"{url_admin}/create_admin",
-        headers={"Authorization": "Bearer"}
-    )
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
-    
