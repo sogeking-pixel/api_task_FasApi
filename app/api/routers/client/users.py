@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from typing import Annotated
 from app.schemas.user import UserResponse
 from app.utils.token import  get_current_active_user
@@ -31,15 +31,18 @@ async def change_password(
 ) -> dict:
     
     if current_user.type_user == 'client' and current_user.id != user_id:
-        raise
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+        detail="Could not access")
     
     user: User = db.query(User).filter(User.id == user_id).first()
     
     if not user:
-        raise
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+        detail="Could not found")
      
     if current_user.type_user == 'admin' and user.type_user != 'client':
-        raise   
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+        detail="Could not access")  
     
     # Store all existing tokens in RevokedToken
     tokens :list[Token] = db.query(Token).filter(Token.user_id == user_id).all()
